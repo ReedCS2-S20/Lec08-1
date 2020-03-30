@@ -8,10 +8,13 @@
 In this lecture we continue looking at MIPS32 programming. We review
 the "core" assembler instruction set and go over solutions to Homework 07.
 We focus on loops and conditionals, structured with "branch" instructions.
-Lastly, we look at placing initial array values in a global data space
-and accessing arrays' contents using the "load" and "store" instructions.
-We review a few classic array algrorithms, but instead writtem in MIPS
-assembly.
+Lastly, we look at placing initial values into a global data space
+and accessing its contents using the "load" and "store" instructions.
+We end with a program that modifies a character string in memory.
+
+The next Lecture 08-2 will take this memory operations a bit further,
+showing you low-level programs that operate on arrays and linked lists
+that are stored in a MIPS processor's memory.
 
 ---
 
@@ -38,12 +41,13 @@ assembly.
      C. data segment directives .asciiz, .word, .space
     IV. reading and writing memory
      A. reading an integer word from .data
-     B. LA and LW instructions
+     B. LW and SW instructions
      C. increment a word in memory
-     D. SW instruction
+     D. load/store, RISC vs. CISC
      E. LB and SB instructions
-     F. example: write "bye" into space of hello
+     F. example: write "bye" into space of "hello"
     V. exercises for our next meeting
+
 ---
  
 ## Some logistics
@@ -112,7 +116,9 @@ completed Homework 07. Before I begin, let me offer this link
 to [a course on MIPS](https://chortle.ccsu.edu/AssemblyTutorial/index.html#part4)
 from Central Connecticut State. It may teach more than I do, and
 emphasize different aspects of MIPS, but you still might find
-it helpful.
+it helpful. You might also find these 
+[notes from Harvard's CS50](http://www.eecs.harvard.edu/~ellard/Courses/cs50-asm.pdf)
+by Daniel Ellard just as useful.
 
 ### Solution to Homework 07 Exercise 1
 
@@ -776,10 +782,6 @@ in hexadecimal, so the last byte is the bits 01101010.) We can then, for example
 fetch this value from memory, increment it within a register, then store it back to
 that area of memory with the instructions
 
-    la $a0,value
-    lw $t0,($a0)
-    addiu $t0,$t0,10
-    sw $t0,($a0)
 
 and that will replace the value 100 living at the address `value` with the value
 110 within the computer memory. We talk more about this instruction sequence below.
@@ -832,3 +834,237 @@ than instruction codes. The assembler is directed by these to do that.
 
 ## Reading and writing memory, a preview
 
+In the notes above I mentioned two facts:
+
+1. It's possible to store integer data values within the program's binary image
+using the `.word` directive. When that 4-byte value gets loaded as the `.data`
+segment with the program code in the `.text` segment, it lives at some address
+in memory. 
+
+2. There is an `LA` instruction for loading that address into a register. And then there 
+is a `LW` instruction for loading the value itself from the memory into a register. 
+
+Here, for example, is a program `output100.asm` that does exactly that:
+
+            .data
+    feedback:       .asciiz "The value held in memory is "
+    dot_eoln:       .asciiz ".\n"
+    value:          .word 100
+    
+            .globl main
+            .text
+    
+    main:
+            la      $a0, feedback
+            li      $v0, 4
+            syscall
+    
+       	    la      $t0, value
+            lw      $a0, ($t0)
+            li      $v0, 1		
+            syscall
+    
+            la	$a0, dot_eoln
+            li	$v0, 4
+            syscall
+    
+            li	$v0, 0
+            jr	$ra
+
+The key instructons worth noting here are the fourth and fifth ones,
+just before system call #1 is made. The fourth one is essentially
+a "load immediate." There is essentially a pointer named `value` in
+the code. We are loading that address's bits into register `t0` with
+the `LA` instruction. Then to actually load the value of 100 (stored
+at that address) we issue the `LW` instruction. This has the format
+
+• MEMORY-TO-REGISTER LOAD
+
+&nbsp;&nbsp;&nbsp;&nbsp;`LW` *destination*`, (`*source*`)`
+
+This takes two registers as arguments. The *source* register holds the 
+address of a location in memory. The *load word* instruction requests
+that the four bytes living at that address be brought from memory into the 
+processor. That 4-byte (32-bit) value gets placed into the *destination*
+register.
+
+This is sometimes called a "memory read" or a "fetch from memory." We can
+put any value into the *source* register, treat it as an address, and so
+with `LW` fetch the value stored there. This reads a "word" of data, four
+consecutive bytes.
+
+This means that the `LW` instruction is very much the same as the C++ 
+assignment statement:
+
+    destination = *source;
+
+We treat the varaiable `source` as a pointer, and we "dereference*
+that pointer to access the memory contents at that pointer, and we
+store that data in the variable `destination`.
+
+Alternatively, we can think of the memory that a MIPS32 processor
+has access to as a very large array of bytes. That means, roughly,
+that *source* can be thought of as an integer index into that
+array. Let's call the array `mem`. Then we are asking for the four
+bytes `mem[source]`, `mem[source+1]`, `mem[source+2]`, `mem[source+3]`,
+treating them as an integer, and placing them into `destination`.
+So, I suppose, it's like this pseudo-statement:
+
+    destination[0:3] = mem[source:source+3];
+
+We're reading four consecutive bytes from a particular place in the 
+big array of bytes that is the program's memory.
+
+There is a natural companion to this instruction, one for writing
+a value out to memory.
+
+• REGISTER-TO-MEMORY STORE
+
+&nbsp;&nbsp;&nbsp;&nbsp;`SW` *source*`, (`*destination*`)`
+
+This also takes two registers as arguments. The *source* register holds a
+4-byte value. The *store word* instruction writes those four bytes out to 
+memory starting at the location specified in the *destination* register.
+This is called a "write to memory." It is roughly equivalent to the C++
+statement
+
+    *destination = source;
+
+The variable on the right is assumed to be of type `int`. The variable 
+on the left is assumed to be of type `int*`, i.e. a pointer to an `int`.
+We are setting the memory pointed to by `destination` to the value
+held in `source`.
+
+### A note on words
+
+Note that integers in C++ are 4-byte values and MIPS32 operates on 
+4-byte values. Its registers are 4 bytes wide. Addresses are also
+4-byte values. A computer "word" is processor architecture specific:
+since MIPS32 is a 32-bit processor architecture, and so the "load
+word" and "store word" instructions operate with 4-byte items.
+
+### Increment example explained
+
+Included in this lecture's materials is the code for `output110.asm`. It
+is pretty much the same code as `output100.asm` except it includes a 
+small section of code
+
+    la $a0,value
+    lw $t0,($a0)
+    addiu $t0,$t0,10
+    sw $t0,($a0)
+
+And at the top is the `.data` segment declaration 
+
+    value: .word 100
+
+So what the code is doing is loading that single word from memory, holding 
+a value of 100. This is done in the first two instructions, using `a0` as the
+pointer and `t0` as the destination register.  It then adds 10 to that value.
+It then writes out the value of 110 back to that location in memory.
+
+In general, this is how memory is modified by a MIPS assembly program. Data in
+memory is loaded into the processor, calsculations are performed on that data,
+and then that modified data is written out to memory.
+
+In MIPS processors, memory cannot be modified directly. MIPS is called
+a *load/store processor architecture* because of this. Some other processor
+architectures have additional instructions that can directly modify memory. 
+Intel's *x86* family of processors are such an example. Historically, there
+are reasons for these two choices. See 
+[Wikipedia's discussion](https://en.wikipedia.org/wiki/Reduced_instruction_set_computer)
+about this. The rise of good language compilers, and the end of the need for 
+programmers to directly write assembler code,  led to the load/store design. 
+
+### Editing strings
+
+Not all the data we operate on is 4 bytes long. Character strings, for
+example, are sequences of individual bytes, with each byte coding for
+a character/letter. Recall that the character string "Hi!\n" that we
+described above is the five byte sequence 72, 105, 33, 10, 0. And
+"hello" is the six byte sequence 104, 101, 108, 108, 111, 0. Since,
+for example, our programs might want to manipulate the contents of
+character strings, we need these two instructions:
+
+&nbsp;&nbsp;&nbsp;&nbsp;`LB` *destination*`, (`*source*`)`  
+&nbsp;&nbsp;&nbsp;&nbsp;`SB` *source*`, (`*destination*`)`  
+
+These load and store a single byte of data from and to memory.
+Since registers hold 4 bytes, only the least significant byte
+is touched by these two instructions. 
+
+As our final example of memory reading and writing, consider the
+sample program `hellobye.asm`. It writes out the text `hello` to the
+console, and then it writes out the text `bye` to the console. In
+doing so, it first has the characters of `hello` sitting initially in
+the program image. The print string system call #4 gets the address of
+this sequence, and outputs those five characters.  The program then
+overwrites the start of that string in memory with the three
+characters `b`-`y`-`e` and then character 0. It does so with the
+lines
+
+    	la	$t0, hello_ptr
+    	li	$t1, 'b'
+    	sb	$t1, ($t0)
+    
+    	addiu	$t0, $t0, 1
+    	li	$t1, 'y'
+    	sb	$t1, ($t0)
+    
+    	addiu	$t0, $t0, 1
+    	li	$t1, 'e'
+    	sb	$t1, ($t0)
+    
+    	addiu	$t0, $t0, 1
+    	li	$t1, 0
+    	sb	$t1, ($t0)
+
+It then invokes system call #4 again, using the same address in
+memory, and so `bye` gets output instead with the same call.  The code
+above simply writes at, and then increments, the address stored in
+`t0`.  It does this once for each character, changing the contents of
+that string.
+
+---
+
+## Exercises
+
+Like I mentioned at the start, we will no longer be holding lab sessions.
+Instead I'll be assigning two kinds of exercises:
+
+* Homework exercises on Wednesdays, due the following Wednesday.
+* Optional exercises at the end of each lecture.
+
+The former will be just like past homeworks that we normally assigned on
+Fridays. The latter will be short exercises to help you practice what
+was just covered in lecture and to prepate for the next lecture.
+
+Here are three exercises that you are welcome to complete for Lecture 08-2:
+
+**Exercise 1.** Change `hello.asm` so that it instead outputs this to the console
+
+    hello
+    ello
+    llo
+    lo
+    o
+
+*Note:* Each line starts from a different place in the character string.
+
+**Exercise 2.** Change `hello.asm` so that it instead outputs this to the console
+
+    hello
+    elloh
+    llohe
+    lohel
+    ohell
+
+Each line is a result of rotating the string's contents by one character.
+
+**Exercises 3 and 4.** Have each of the above instead operate on a
+string read as input from the console.  See `string.asm` to see how to
+input a character string into memory. Write the code so that it works with
+any (somewhat short) string that gets input on the console.
+
+I'll share my solutions to these in the next lecture, and use them as 
+a jumping off point for working with arrays and structs using MIPS code.
