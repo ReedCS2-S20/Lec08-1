@@ -12,7 +12,7 @@ There are two (optional) practice exercises at the end of the lecture slides. Yo
 
 ## Video Links
 
-`Slide 01` [Part 01. Introduction](https://ensemble.reed.edu/Watch/Fi36Epx8) *03m30s*  
+`Slide 01` [Part 01. Introduction](https://ensemble.reed.edu/Watch/Dm4c7X9F) *03m30s*  
 `Slide 06` [Part 02. Writing Multiply](https://ensemble.reed.edu/Watch/Wy76PcCt) *07m15s*  
 `Slide 15` [Part 03. Instruction Review](https://ensemble.reed.edu/Watch/Pg67Ebi5) *07m30s*  
 `Slide 26` [Part 04. System Calls](https://ensemble.reed.edu/Watch/o9L2Jkw4) *07m30s*  
